@@ -4456,9 +4456,16 @@ classdef SI4 < most.Model & most.MachineDataFile
             %continuously at current scan settings, without logging images
             %to disk. Used typically while  focusing and/or translating
             %specimen.
+            
+            % AR added:
+            % serves to ensure fast z is zeroed before focussing
             currentPos = obj.motorPosition;
-            obj.motorDefineUserPosition(1,[currentPos(1:3),0]);
-            obj.motorGotoUserDefinedPosition(1);
+            if length(currentPos) == 4
+                % then fast z is enabled
+                obj.motorDefineUserPosition(1,[currentPos(1:3),0]);
+                obj.motorGotoUserDefinedPosition(1);
+            end
+            %%%% END added code
             
             try
                 
@@ -4523,9 +4530,16 @@ classdef SI4 < most.Model & most.MachineDataFile
             %frames & slices at current scan settings, logging images to
             %disk if specified. specimen.
 %           Ranson added to fix issue with fast z starting position
+
+            % AR added:
+            % serves to ensure fast z is zeroed before focussing
             currentPos = obj.motorPosition;
-            obj.motorDefineUserPosition(1,[currentPos(1:3),0]);
-            obj.motorGotoUserDefinedPosition(1);
+            if length(currentPos) == 4
+                % then fast z is enabled
+                obj.motorDefineUserPosition(1,[currentPos(1:3),0]);
+                obj.motorGotoUserDefinedPosition(1);
+            end
+            %%%% END added code
 
             try
                 %Boilerplate start of GRAB/LOOP modes
@@ -5330,6 +5344,8 @@ classdef SI4 < most.Model & most.MachineDataFile
         
         %Callback methods
         function frameAcquiredFcn(obj,~,~)
+            global frameBuffer;
+            global frameBufferSize;
             if strcmpi(obj.acqState,'idle')
                 return;
             end
@@ -5351,6 +5367,7 @@ classdef SI4 < most.Model & most.MachineDataFile
                 end
                 
                 %Circular permutation so that first element is most-recent frame %TODO: Handle missed frames
+                
                 obj.acqFrameBuffer = [obj.acqFrameBuffer(end);obj.acqFrameBuffer(1:end-1)];
                 
                 %Signal that frame has been acquired
@@ -5408,7 +5425,8 @@ classdef SI4 < most.Model & most.MachineDataFile
                     obj.notify('sliceDone');
                 end
                 
-                %Update FastZ beam data, if required
+                %Update FastZ beam data, if required RANSON: adjust z
+                %online here?
                 if fastZAcq && obj.fastZAllowLiveBeamAdjust && (obj.beamFlybackBlanking || obj.beamPzAdjust)
                     zprvBeamsRefreshFastZData(obj,1);
                 end
@@ -5425,6 +5443,17 @@ classdef SI4 < most.Model & most.MachineDataFile
                     if rollAveFactor > 1 %Display averaging enabled
                         
                         selectedFramesDone = ceil(obj.acqFramesDoneTotal/obj.displayFrameBatchFactor);
+                        
+                        bufferLength = 20;
+                        if obj.acqFramesDoneTotal==2
+                            % disp('First frame');
+                            % preallocate space for buffer
+                            for iFrame = 1:obj.displayFrameBatchFactor
+                                frameBuffer{iFrame} = zeros([size(obj.acqFrameBuffer{1}),bufferLength]);
+                            end
+                        end
+                        frameBuffer{tileIdx}(:,:,:,mod(obj.fastZVolumesDone,bufferLength)+1) = obj.acqFrameBuffer{1} ;%cat(4,obj.acqFrameBuffer{1},frameBuffer{tileIdx});
+                        %disp(num2str(mod(obj.fastZVolumesDone,bufferLength)+1));
                         if selectedFramesDone == 1
                             obj.displayRollingBuffer{tileIdx} = double(obj.acqFrameBuffer{1});
                         elseif selectedFramesDone <= rollAveFactor
