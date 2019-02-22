@@ -5445,14 +5445,16 @@ classdef SI4 < most.Model & most.MachineDataFile
                         selectedFramesDone = ceil(obj.acqFramesDoneTotal/obj.displayFrameBatchFactor);
                         
                         bufferLength = 20;
-                        if obj.acqFramesDoneTotal==2
+                        if or(obj.acqFramesDoneTotal==1,obj.acqFramesDoneTotal==2)
                             % disp('First frame');
                             % preallocate space for buffer
+                            frameBuffer = [];
                             for iFrame = 1:obj.displayFrameBatchFactor
                                 frameBuffer{iFrame} = zeros([size(obj.acqFrameBuffer{1}),bufferLength]);
                             end
                         end
-                        frameBuffer{tileIdx}(:,:,:,mod(obj.fastZVolumesDone,bufferLength)+1) = obj.acqFrameBuffer{1} ;%cat(4,obj.acqFrameBuffer{1},frameBuffer{tileIdx});
+                        fastZVolumesDone = floor(obj.acqFramesDoneTotal/obj.displayFrameBatchFactor);
+                        frameBuffer{tileIdx}(:,:,:,mod(fastZVolumesDone,bufferLength)+1) = obj.acqFrameBuffer{1} ;%cat(4,obj.acqFrameBuffer{1},frameBuffer{tileIdx});
                         %disp(num2str(mod(obj.fastZVolumesDone,bufferLength)+1));
                         if selectedFramesDone == 1
                             obj.displayRollingBuffer{tileIdx} = double(obj.acqFrameBuffer{1});

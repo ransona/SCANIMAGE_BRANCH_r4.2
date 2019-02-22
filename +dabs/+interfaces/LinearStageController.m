@@ -719,9 +719,11 @@ classdef LinearStageController < hgsetget
             if nargin < 3 || isempty(tfCanBeScalar)
                 tfCanBeScalar = false;
             end
+            
+            % RANSON 28.01.2019 commented out next line, then reversed
             assert(isvector(xDevice) && numel(xDevice)==obj.numDeviceDimensions || ...
                 tfCanBeScalar && isscalar(xDevice) );
-            
+%             
             tfScalarSpecialSituation = isscalar(xDevice) && obj.numDeviceDimensions > 1;
 
             % Unit conversion
